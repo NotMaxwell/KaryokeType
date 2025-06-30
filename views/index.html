@@ -4,10 +4,297 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.title}}</title>
+    <style>
+        * { 
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #323437;
+            color: #646669;
+            font-family: 'Robot Mono', monospace;
+            overflow-x: hidden;
+        }
+
+        .header {
+            color: #e2b714;
+            padding: 40px 0 20px 0;
+        }
+
+        .header h1 {
+            color: #e2b714;
+            font-size: 2.5rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .main-container {
+            max-width: 100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .test-config {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+            font-size: 16px;
+        }
+
+        .config-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .config-btn {
+            background: none;
+            border: none;
+            color: #646669;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .config-btn:hover, config-btn.active {
+            color: #e2b714;
+            background: #646669;
+        }
+
+        .text-display {
+            font-family: "Roboto Mono", monospace;
+            font-size: 24px;
+            line-height: 1.8;
+            padding: 40px;
+            margin: 40px 0;
+            border-radius: 8px;
+            background: #2c2e31;
+            position: relative;
+            overflow: hidden;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .text-display::-webkit-scrollbar {
+            display: none;
+        }
+
+        .char {
+            position: relative;
+        }
+
+        .char.correct {
+            color: #d1d0c5;
+        }
+
+        .char.incorrect {
+            color: #ca4754;
+            background: #ca4754;
+            border-radius: 2px;
+        }
+
+        .char.current {
+            background: #e2b714;
+            color: #323437;
+            border-radius: 2px;
+            animation: blink 1s infinite;
+        }
+
+        .char.untyped {
+            color: #646669;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.7; }
+        }
+
+        .input-container {
+            position: relative;
+            margin: 20px 0;
+        }
+
+        #typing-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-size: 24px;
+            color: transparent;
+            caret-color: #e2b714;
+            font-family: 'Roboto Mono', monospace;
+            padding: 10px 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 40px 0;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stats-container.visible {
+            opacity: 1;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 48px;
+            color: #e2b714;
+            font-weight: 300;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: #646669;
+            margin-top: 5px;
+        }
+
+        .restart-btn {
+            position: fixed;
+            top: 50%;
+            right: 30px;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #646669;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .restart-btn:hover {
+            color: #e2b714;
+            background: #2c2e31;
+        }
+
+        .focus-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(50, 52, 55, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .focus-message {
+            color: #646669;
+            font-size: 18px;
+        }
+
+    </style>
 </head>
 <body>
     <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js"></script>
     <h1>Welcome to KaryokeType</h1>
+    <div class="main-container">
+        <!-- test config -->
+        <div class="test-config">
+            <div class="config-group">
+                <button class="config-btn" data-type="time">time</button>
+                <button class="config-btn" data-type="words">words</button>
+                <button class="config-btn" data-type="quote">quote</button>
+            </div>
+            <div calss="config-group">
+                <button class="config-btn active" data-value="15">15</button>
+                <button class="config-btn" data-value="30">30</button>
+                <button class="config-btn" data-value="60">120</button>
+                <button class="config-btn" data-value="120">120</button>
+            </div>
+        </div>
+
+        <!-- display text-->
+        <div class="text-display"
+             id="text-display"
+             hx-get="/api/text/initialize"
+             hx-trigger="load">
+            Loading...
+        </div>
+
+        <!-- hidden input -->
+        <div class="input-container">
+            <input type="text"
+                   id="typing-input"
+                   hx-post="/api/typing/update"
+                   hx-trigger="input"
+                   hx-include="this"
+                   autocomplete="off"
+                   spellcheck="false"> 
+        </div>
+
+        <!-- stats -->
+        <div class="stats-container" id="stats">
+            <div class="stat">
+                <span class="stat-value" id="wpm">0</span>
+                <div class="stat-label">wpm</div>
+            </div>
+            <div class="stat">
+                <sapn class="stat-value" id="accuracy">100</sapn>
+                <div class="stat-label">acc</div>
+            </div>
+        </div>
+    </div>
     
+    <button class="restart-btn" onclick="restartTest()">⟲</button>
+
+    <div class="focus-overlay" id="focus-overlay">
+        <div class="focus-message">Click here or press any key to focus</div>
+    </div>
+
+    <script>
+        // focus managment
+        document.addEventListener('click', () => {
+            document.getElementById('typing-input').focus();
+            document.getElementById('focus-overlay').style.display = 'none';
+        });
+        document.addEventListener('keydown', () => {
+            document.getElementById('typing-input').focus();
+            document.getElementById('focus-overlay').style.display = 'none';
+        });
+        document.getElementById('typing-input').addEventListener('focus', () => {
+            document.getElementById('focus-overlay').style.display = 'flex';
+        });
+
+        // config buttons
+        document.querySelectorAll('.config-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (this.dataset.type) {
+                    document.querySelectorAll('[data-type]').forEach(b => b.classList.remove('active'));
+                } else {
+                    document.querySelectorAll('[data-value]').forEach(b => b.classList.remove('active'));
+                }
+                this.classList.add('active');
+            });
+        });
+
+        function restartTest() {
+            htmx.ajax('GET', '/api/text/initialize', {target: '#text-display'});
+            document.getElementById('typing-input').value = '';
+            document.getElementById('stats').classList.remove('visible');
+        }
+
+        document.getElmentById('typing-input').addEventListener('input', function() {
+            document.getElementById('stats').classList.add('visible');
+        });
+    </script>
 </body>
 </html>
